@@ -12,8 +12,10 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      "https://captake-web.web.app",
+      "https://seller-center-32880.web.app",
+      "https://seller-center-32880.firebaseapp.com",
       "https://captake-web.firebaseapp.com",
+      "https://captake-web.web.app",
     ],
     credentials: true,
   })
@@ -43,7 +45,7 @@ const verify = async (req, res, next) => {
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
-  jwt.verify(token, process.env.ACCESS_TOKEN, (error, decoded) => {
+  jwt.verify(token, process.env.JWT_TOKEN, (error, decoded) => {
     if (error) {
       res.status(401).json({ message: "Unauthorized" });
       return;
@@ -79,7 +81,7 @@ const run = async () => {
     ====================================== */
     app.post("/jwt", async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
+      const token = jwt.sign(user, process.env.JWT_TOKEN, {
         expiresIn: "1d",
       });
       res
