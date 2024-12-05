@@ -16,12 +16,14 @@ app.use(
       "https://seller-center-32880.firebaseapp.com",
       "https://captake-web.firebaseapp.com",
       "https://captake-web.web.app",
+      // "http://localhost:5173",
     ],
     credentials: true,
   })
 );
 app.use(express.json());
 app.use(cookieParser());
+app.options("*", cors());
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASSWORD}@cluster0.wjboujk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -382,14 +384,23 @@ const run = async () => {
       6. Seller products question & answer section start here
       ==========================================================*/
 
-    app.get("/product-questions/:productId", async (req, res) => {
-      const productId = req.params.productId;
+    app.get("/product-questions", async (req, res) => {
+      const { productId, page = 1 } = req.query;
+      const pageValue = parseInt(page, 10);
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
+
         const result = await product_questions
           .find({ "question.productInfo.productId": productId })
           .sort({ createdAt: -1 })
+          .limit(10)
+          .skip(skip)
           .toArray();
-        res.status(200).json(result);
+
+        const total = await product_questions.countDocuments({
+          "question.productInfo.productId": productId,
+        });
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -554,7 +565,7 @@ const run = async () => {
     app.get("/seller-brands/:sellerId", async (req, res) => {
       const sellerId = req.params.sellerId;
       try {
-        const result = await seller_brands.findOne({ sellerId });
+        const result = await seller_brands.find({ sellerId }).toArray();
         res.status(200).json(result);
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
@@ -580,18 +591,34 @@ const run = async () => {
       =============================================*/
 
     app.get("/order", verify, async (req, res) => {
-      const { userId, email } = req.query;
+      const { userId, email, page = 1, search } = req.query;
       if (email !== req?.user?.email) {
         res.status(403).json({ message: "forbidden access" });
         return;
       }
+      const pageValue = parseInt(page, 10);
+
+      const query = {
+        userId,
+        $or: [
+          { orderId: search ? parseInt(search) : { $exists: true } },
+          { date: { $regex: search, $options: "i" } },
+          { paymentMethod: { $regex: search, $options: "i" } },
+          { status: { $regex: search, $options: "i" } },
+        ],
+      };
 
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
         const result = await user_order
-          .find({ userId })
+          .find(query)
           .sort({ createdAt: -1 })
+          .limit(10)
+          .skip(skip)
           .toArray();
-        res.status(200).json(result);
+
+        const total = await user_order.countDocuments({ userId });
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -693,17 +720,34 @@ const run = async () => {
       =============================================*/
 
     app.get("/review", verify, async (req, res) => {
-      const { userId, email } = req.query;
+      const { userId, email, page, search = "" } = req.query;
       if (email !== req?.user?.email) {
         res.status(403).json({ message: "forbidden access" });
         return;
       }
+      const pageValue = parseInt(page, 10);
+
+      const query = {
+        userId,
+        $or: [
+          { orderId: search ? parseInt(search) : { $exists: true } },
+          { reviewMessage: { $regex: search, $options: "i" } },
+          { "rating.rating": { $regex: search, $options: "i" } },
+        ],
+      };
+
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
+
         const result = await user_review
-          .find({ userId })
+          .find(query)
           .sort({ createdAt: -1 })
+          .limit(10)
+          .skip(skip)
           .toArray();
-        res.status(200).json(result);
+
+        const total = await user_review.countDocuments({ userId });
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -725,15 +769,23 @@ const run = async () => {
       }
     });
 
-    app.get("/review-productId/:productId", async (req, res) => {
-      const productId = req.params.productId;
+    app.get("/review-productId", async (req, res) => {
+      const { productId, page = 1 } = req.query;
+      const pageValue = parseInt(page, 10);
+
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
+
         const result = await user_review
           .find({ "productInfo.productId": productId })
           .sort({ createdAt: -1 })
+          .limit(10)
+          .skip(skip)
           .toArray();
-
-        res.status(200).json(result);
+        const total = await user_review.countDocuments({
+          "productInfo.productId": productId,
+        });
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -763,19 +815,24 @@ const run = async () => {
       =============================================*/
 
     app.get("/all-seller", async (req, res) => {
-      const { limit, page, sortedValue } = req.query;
+      const { limit = 10, page = 1, sortedValue } = req.query;
+      const pageValue = parseInt(page, 10);
 
       const option = {
         projection: { logo: 1, businessName: 1 },
       };
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
+
         const result = await seller
           .find({ status: "active" }, option)
-          .limit(parseInt(limit))
           .sort({ createdAt: parseInt(sortedValue) })
+          .limit(parseInt(limit))
+          .skip(skip)
           .toArray();
 
-        res.status(200).json(result);
+        const total = await seller.countDocuments({ status: "active" });
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -826,14 +883,20 @@ const run = async () => {
     });
 
     app.get("/seller-all-review", async (req, res) => {
-      const { limit, sellerId, sortedValue } = req.query;
+      const { limit = 10, sellerId, sortedValue, page = 1 } = req.query;
+      const pageValue = parseInt(page, 10);
+
       try {
+        const skip = Math.max(0, (pageValue - 1) * 10);
         const result = await user_review
           .find({ sellerId })
           .sort({ createdAt: parseInt(sortedValue) })
           .limit(parseInt(limit))
+          .skip(skip)
           .toArray();
-        res.status(200).json(result);
+
+        const total = await user_review.estimatedDocumentCount();
+        res.status(200).json({ total, data: result });
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
@@ -886,19 +949,53 @@ const run = async () => {
     });
 
     app.get("/category-products", async (req, res) => {
-      const { limit, sortedValue, category } = req.query;
-      try {
-        const result = await seller_products
-          .find({ category })
-          .sort({ price: parseInt(sortedValue) })
-          .limit(parseInt(limit))
-          .toArray();
+      const { limit = 10, sortedValue, category, page = 1 } = req.query;
 
-        res.status(200).json(result);
+      const sortOrder = parseInt(sortedValue);
+
+      const limitValue = parseInt(limit, 10);
+      const pageValue = parseInt(page, 10);
+
+      try {
+        const skip = Math.max(0, (pageValue - 1) * limitValue);
+
+        const pipeline = [
+          {
+            $match: { category },
+          },
+          {
+            $addFields: {
+              sortPrice: {
+                $cond: {
+                  if: { $gt: ["$specialPrice", 0] },
+                  then: "$specialPrice",
+                  else: "$price",
+                },
+              },
+            },
+          },
+          {
+            $sort: { sortPrice: sortOrder },
+          },
+          {
+            $skip: skip,
+          },
+          {
+            $limit: limitValue,
+          },
+        ];
+
+        const result = await seller_products.aggregate(pipeline).toArray();
+        const total = await seller_products.countDocuments({ category });
+
+        // Return the response
+        res.status(200).json({ total, data: result });
       } catch (error) {
-        res
-          .status(500)
-          .json({ message: "Error while finding category products" });
+        console.error("Error:", error); // Log the error to console for debugging
+        res.status(500).json({
+          message: "Error while finding category products",
+          error: error.message,
+        });
       }
     });
 
