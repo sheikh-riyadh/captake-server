@@ -16,6 +16,8 @@ app.use(
       "https://seller-center-32880.firebaseapp.com",
       "https://captake-web.firebaseapp.com",
       "https://captake-web.web.app",
+      "https://admin-dashboard-f546d.web.app",
+      "https://admin-dashboard-f546d.firebaseapp.com",
       // "http://localhost:5173",
     ],
     credentials: true,
