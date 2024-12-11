@@ -902,7 +902,29 @@ const run = async () => {
           sellerId,
           "rating.rating": { $exists: true, $gt: star },
         });
-        res.status(200).json({ total, data: products });
+
+        if (products?.length) {
+          res.status(200).json({ total, data: products });
+        } else {
+          try {
+            const result = await seller_products
+              .aggregate([
+                { $match: { status: "active", sellerId } },
+                { $sort: { views: -1 } },
+                { $limit: 4 },
+              ])
+              .toArray();
+
+            const total = await seller_products.countDocuments({
+              status: "active",
+              sellerId,
+            });
+
+            res.status(200).json({ total, data: result });
+          } catch (error) {
+            res.status(500).json({ message: "An error occurred" });
+          }
+        }
       } catch (error) {
         res.status(500).json({ message: "An error occurred" });
       }
