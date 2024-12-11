@@ -419,9 +419,13 @@ const run = async () => {
       const { title, limit, page, sellerId } = req.query;
 
       const query = {
-        $or: [{ title: { $regex: title, $options: "i" } },{ category: { $regex: title, $options: "i" } },{ brand: { $regex: title, $options: "i" } }],
+        $or: [
+          { title: { $regex: title, $options: "i" } },
+          { category: { $regex: title, $options: "i" } },
+          { brand: { $regex: title, $options: "i" } },
+        ],
       };
-      if (sellerId !="undefined") {
+      if (sellerId != "undefined") {
         query.sellerId = sellerId;
       }
 
@@ -678,9 +682,9 @@ const run = async () => {
         }
 
         // Generate new order data
-        const newData = data.map((item,index) => ({
+        const newData = data.map((item, index) => ({
           ...item,
-          orderId: seqValue + index,
+          orderId: seqValue + (index + 100),
           createdAt: moment().toISOString(),
           status: "pending",
           date: moment().format("D"),
